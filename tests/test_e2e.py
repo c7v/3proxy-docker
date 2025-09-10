@@ -26,11 +26,17 @@ def wait_for_logs(substr: str, timeout: float = 60.0) -> None:
 
 
 def psql_count_max() -> Tuple[int, str]:
-    # Use careful quoting: single-quoted shell for sh -lc, with a double-quoted SQL string.
-    # Inside the SQL, single quotes are used normally since they're within double quotes.
+    # Resolve DB creds from environment with sensible defaults (matching .env),
+    # then avoid host-shell variable expansion by embedding literals.
+    user = os.getenv("POSTGRES_USER", "proxy")
+    db = os.getenv("POSTGRES_DB", "proxydb")
     cmd = (
         "docker exec -i $(docker compose ps -q db) sh -lc "
-        "'psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -At -c \"SELECT count(*), COALESCE(to_char(max(ts), 'YYYY-MM-DD HH24:MI:SS'), '') FROM proxy_sessions;\"'"
+        + (
+            f"\"psql -U {user} -d {db} -At <<'SQL'\n"
+            "SELECT count(*), COALESCE(to_char(max(ts), 'YYYY-MM-DD HH24:MI:SS'), '') FROM proxy_sessions;\n"
+            "SQL\""
+        )
     )
     _, out, _ = run(cmd)
     out = out.strip()
