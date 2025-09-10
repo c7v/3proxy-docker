@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+
+      - name: Show Docker info
+        run: |
+          docker version
+          docker info
+
+      - name: Run tests
+        env:
+          # Ensure default ports if env uses variables
+          HTTP_PORT: 3128
+          SOCKS_PORT: 1080
+          ENABLE_HTTPS_PROXY: 'false'
+        run: |
+          pytest -q
+
